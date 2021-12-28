@@ -1,0 +1,71 @@
+---
+title:  "course_8_project_ML"
+author: "Filipp Trubin"
+date:   "12/28/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+Read more: http:/groupware.les.inf.puc-rio.br/har#ixzz4Tjq04yaY
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test  cases. 
+
+## Load libraries, data and remove NAs
+```{r lib, echo=FALSE}
+library(caret);library(randomForest);library(PRP)
+library(rpart);library(rpart.plot);library(corrplot)
+```
+
+```{r 2}
+# Loading and cleaning data sets:
+train = read.csv("./pml-training.csv",na.strings=c("N/A","NA","#DIV/0!",""))
+test = read.csv("./pml-testing.csv",na.strings=c("N/A","NA","#DIV/0!",""))
+test <- test[,8:length(colnames(test))]
+train <- train[,8:length(colnames(train))]
+test_clean <- test[, colSums(is.na(test)) == 0] 
+train_clean <- train[, colSums(is.na(train)) == 0] 
+
+```
+
+## Build validation & training sets
+```{r p2}
+toTrain <- createDataPartition(train_clean$classe,p=0.7, list=FALSE)
+training <- train_clean[toTrain,]
+validation <- train_clean[-toTrain,]
+```
+
+## Build Random forest:
+```{r p3}
+#Training the model
+control.parms <- trainControl(method="cv", 5)
+rand_for_model <- train(classe ~ ., data=training, method="rf",trControl=control.parms, ntree=251)
+rand_for_model
+#Looks like the model performs good aginst the training set.
+```
+
+## Testing model / using confusion matrix 
+```{r p4}
+predict <- predict(rand_for_model, validation)
+confusionMatrix(as.factor(validation$classe),predict)
+
+```
+
+## Test set predict
+```{r p5}
+ptest <- predict(rand_for_model, test_clean)
+ptest
+```
+
+## Additonal. Get tree plot
+```{r p6}
+rand_for_model_plot <- rpart(classe ~ ., data=train_clean, method="class")
+prp(rand_for_model_plot)
+```
